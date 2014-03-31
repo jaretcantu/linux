@@ -977,10 +977,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 	if (retval) {
 		dev_err (parent_dev, "can't register root hub for %s, %d\n",
 				dev_name(&usb_dev->dev), retval);
-	}
-	mutex_unlock(&usb_bus_list_lock);
-
-	if (retval == 0) {
+	} else {
 		spin_lock_irq (&hcd_root_hub_lock);
 		hcd->rh_registered = 1;
 		spin_unlock_irq (&hcd_root_hub_lock);
@@ -989,6 +986,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 		if (HCD_DEAD(hcd))
 			usb_hc_died (hcd);	/* This time clean up */
 	}
+	mutex_unlock(&usb_bus_list_lock);
 
 	return retval;
 }
@@ -1582,8 +1580,8 @@ void usb_hcd_giveback_urb(struct usb_hcd *hcd, struct urb *urb, int status)
 
 	/* pass ownership to the completion handler */
 	urb->status = status;
-	urb->complete (urb);
 	atomic_dec (&urb->use_count);
+	urb->complete (urb);
 	if (unlikely(atomic_read(&urb->reject)))
 		wake_up (&usb_kill_urb_queue);
 	usb_put_urb (urb);
@@ -1957,6 +1955,7 @@ int hcd_bus_suspend(struct usb_device *rhdev, pm_message_t msg)
 	}
 
 	if (!hcd->driver->bus_suspend) {
+		printk("%s,error,everest\n",__func__);
 		status = -ENOENT;
 	} else {
 		clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
